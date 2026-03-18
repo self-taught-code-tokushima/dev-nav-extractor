@@ -1,0 +1,21 @@
+{
+  "manifest_version": 3,
+  "name": "Meta Horizon Nav Extractor",
+  "version": "1.0",
+  "description": "Meta Horizon Unity ドキュメントの全サイドバーリンクを取得します",
+  "permissions": ["activeTab", "scripting", "clipboardWrite"],
+  "host_permissions": [
+    "https://developers.meta.com/*"
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Nav Links Extractor"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://developers.meta.com/horizon/documentation/unity/*",
+                  "https://developers.meta.com/horizon/develop/unity/"],
+      "js": ["content.js"]
+    }
+  ]
+}
