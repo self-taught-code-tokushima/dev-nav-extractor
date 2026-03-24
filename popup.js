@@ -1,4 +1,4 @@
-let collectedLinks = [];
+let collectedTree = [];
 document.getElementById('extract-btn').addEventListener('click', async () => {
   const btn = document.getElementById('extract-btn');
   const status = document.getElementById('status');
@@ -7,17 +7,22 @@ document.getElementById('extract-btn').addEventListener('click', async () => {
   try {
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
     // content.js が対象ページにいるか確認
-    if (!tab.url.includes('developers.meta.com/horizon')) {
-      status.textContent = '❌ Meta Horizon Unityドキュメントページで実行してください';
+    const supportedSites = [
+      'developers.meta.com/horizon',
+      'dev.epicgames.com/documentation',
+      'docs.unity3d.com'
+    ];
+    if (!supportedSites.some(site => tab.url.includes(site))) {
+      status.textContent = '❌ 対応サイトのドキュメントページで実行してください';
       btn.disabled = false;
       return;
     }
     // content.js にメッセージ送信
     const result = await chrome.tabs.sendMessage(tab.id, { action: 'expandAndCollect' });
     if (result.success) {
-      collectedLinks = result.links;
+      collectedTree = result.tree;
       status.textContent =
-        `✅ 完了！ ${result.totalCount} 件のリンクを取得（展開ボタン: ${result.clickCount}回）`;
+        `✅ 完了！ ${result.totalCount} 件のアイテムを取得（展開ボタン: ${result.clickCount}回）`;
       document.getElementById('format-btns').style.display = 'flex';
       showFormat('json');
     } else {
@@ -41,22 +46,48 @@ document.getElementById('format-btns').addEventListener('click', (e) => {
   const format = e.target.dataset.format;
   if (format) showFormat(format);
 });
+
+/**
+ * ツリーをMarkdown形式のインデント付きリストに変換する
+ */
+function treeToMarkdown(nodes, depth) {
+  return nodes.map(node => {
+    const indent = '  '.repeat(depth);
+    const label = node.url ? `[${node.text}](${node.url})` : node.text;
+    const line = `${indent}- ${label}`;
+    if (node.children.length > 0) {
+      return line + '\n' + treeToMarkdown(node.children, depth + 1);
+    }
+    return line;
+  }).join('\n');
+}
+
+/**
+ * ツリーをフラットなCSV行に変換する
+ */
+function treeToCSVRows(nodes, depth) {
+  const rows = [];
+  for (const node of nodes) {
+    const url = node.url || '';
+    rows.push(`${depth},"${node.text.replace(/"/g, '""')}","${url}"`);
+    if (node.children.length > 0) {
+      rows.push(...treeToCSVRows(node.children, depth + 1));
+    }
+  }
+  return rows;
+}
+
 function showFormat(format) {
   const output = document.getElementById('output');
   const copyBtn = document.getElementById('copy-btn');
   let text = '';
   if (format === 'json') {
-    text = JSON.stringify(collectedLinks, null, 2);
+    text = JSON.stringify(collectedTree, null, 2);
   } else if (format === 'markdown') {
-    text = collectedLinks.map(l => {
-      const indent = '  '.repeat(l.depth);
-      return `${indent}- [${l.text}](${l.absoluteUrl})`;
-    }).join('\n');
+    text = treeToMarkdown(collectedTree, 0);
   } else if (format === 'csv') {
     const header = 'depth,text,url';
-    const rows = collectedLinks.map(l =>
-      `${l.depth},"${l.text.replace(/"/g, '""')}","${l.absoluteUrl}"`
-    );
+    const rows = treeToCSVRows(collectedTree, 0);
     text = [header, ...rows].join('\n');
   }
   output.value = text;

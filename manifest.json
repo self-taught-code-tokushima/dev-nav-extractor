@@ -1,21 +1,38 @@
 {
   "manifest_version": 3,
-  "name": "Meta Horizon Nav Extractor",
-  "version": "1.0",
-  "description": "Meta Horizon Unity ドキュメントの全サイドバーリンクを取得します",
+  "name": "Doc Nav Extractor",
+  "version": "1.1",
+  "description": "ドキュメントサイトのサイドバーナビゲーションを階層構造で抽出",
   "permissions": ["activeTab", "scripting", "clipboardWrite"],
   "host_permissions": [
-    "https://developers.meta.com/*"
+    "https://developers.meta.com/*",
+    "https://dev.epicgames.com/*",
+    "https://docs.unity3d.com/*"
   ],
   "action": {
     "default_popup": "popup.html",
-    "default_title": "Nav Links Extractor"
+    "default_title": "Doc Nav Extractor"
   },
   "content_scripts": [
     {
-      "matches": ["https://developers.meta.com/horizon/documentation/unity/*",
-                  "https://developers.meta.com/horizon/develop/unity/"],
-      "js": ["content.js"]
+      "matches": [
+        "https://developers.meta.com/horizon/documentation/unity/*",
+        "https://developers.meta.com/horizon/develop/unity/"
+      ],
+      "js": ["content-meta.js"]
+    },
+    {
+      "matches": [
+        "https://dev.epicgames.com/documentation/*"
+      ],
+      "js": ["content-epic.js"]
+    },
+    {
+      "matches": [
+        "https://docs.unity3d.com/Manual/*",
+        "https://docs.unity3d.com/*/Documentation/Manual/*"
+      ],
+      "js": ["content-unity.js"]
     }
   ]
 }

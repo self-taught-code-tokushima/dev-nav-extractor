@@ -57,60 +57,66 @@ async function expandAllMenuItems() {
 }
 
 /**
- * サイドバーから全リンクを収集する
- * @returns {Array<{text: string, href: string, depth: number, absoluteUrl: string}>}
+ * 相対URLを絶対URLに変換する
+ * @param {string} href
+ * @returns {string}
  */
-function collectAllLinks() {
+function toAbsoluteUrl(href) {
+  if (!href || href === '#') return null;
+  const baseUrl = 'https://developers.meta.com';
+  return href.startsWith('http') ? href : baseUrl + href;
+}
+
+/**
+ * サイドバーのDOM構造を再帰的に走査してツリーを構築する
+ * @param {Element} container - 子アイテムを含むコンテナ要素
+ * @returns {Array<{text: string, url: string|null, children: Array}>}
+ */
+function walkItems(container) {
+  return Array.from(container.children).map(item => {
+    if (item.id) {
+      // リーフノード: IDあり、実リンクあり
+      const a = item.querySelector('a');
+      if (!a) return null;
+      return {
+        text: a.textContent.trim(),
+        url: toAbsoluteUrl(a.getAttribute('href')),
+        children: []
+      };
+    } else {
+      // 親ノード: IDなし、href="#" の開閉ボタン + 子コンテナ
+      const titleDiv = item.children[0];
+      const contentDiv = item.children[1];
+      const a = titleDiv?.querySelector('a');
+      if (!a) return null;
+      const innerWrapper = contentDiv?.children?.[0];
+      const children = innerWrapper ? walkItems(innerWrapper) : [];
+      return {
+        text: a.textContent.trim(),
+        url: null,
+        children
+      };
+    }
+  }).filter(Boolean);
+}
+
+/**
+ * サイドバーからナビゲーションツリーを収集する
+ * @returns {Array<{text: string, url: string|null, children: Array}>}
+ */
+function collectNavTree() {
   const sidenav = getSidenav();
   if (!sidenav) return [];
-
-  const baseUrl = 'https://developers.meta.com';
-  const seen = new Set();
-
-  return Array.from(sidenav.querySelectorAll('a[href]:not([href="#"])'))
-    .map(a => {
-      // IDパターン（例: "カテゴリ-2_1-0_2-3"）からネスト深度を計算
-      const closestId = a.closest('[id]')?.id || '';
-      const depth = (closestId.match(/_\d+-/g) || []).length;
-      const href = a.getAttribute('href');
-      const absoluteUrl = href.startsWith('http') ? href : baseUrl + href;
-      const text = a.textContent.trim();
-      return { text, href, absoluteUrl, depth };
-    })
-    .filter(link => {
-      // 重複除去（同じURLが複数存在する場合がある）
-      if (seen.has(link.absoluteUrl)) return false;
-      seen.add(link.absoluteUrl);
-      return true;
-    });
+  const rootContainer = sidenav.children[0];
+  if (!rootContainer) return [];
+  return walkItems(rootContainer);
 }
 
 /**
- * 収集したリンクをJSON形式に整形する
+ * ツリーのノード数を再帰的にカウントする
  */
-function formatAsJson(links) {
-  return JSON.stringify(links, null, 2);
-}
-
-/**
- * 収集したリンクをMarkdown形式に整形する
- */
-function formatAsMarkdown(links) {
-  return links.map(link => {
-    const indent = '  '.repeat(link.depth);
-    return `${indent}- [${link.text}](${link.absoluteUrl})`;
-  }).join('\n');
-}
-
-/**
- * 収集したリンクをCSV形式に整形する
- */
-function formatAsCsv(links) {
-  const header = 'depth,text,url';
-  const rows = links.map(l =>
-    `${l.depth},"${l.text.replace(/"/g, '""')}","${l.absoluteUrl}"`
-  );
-  return [header, ...rows].join('\n');
+function countNodes(tree) {
+  return tree.reduce((sum, node) => sum + 1 + countNodes(node.children), 0);
 }
 
 // Chrome Extension のメッセージハンドラ
@@ -120,13 +126,13 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       try {
         // Step 1: 全階層を展開
         const clickCount = await expandAllMenuItems();
-        // Step 2: 全リンクを収集
-        const links = collectAllLinks();
+        // Step 2: ツリー構造で収集
+        const tree = collectNavTree();
         sendResponse({
           success: true,
           clickCount,
-          links,
-          totalCount: links.length
+          tree,
+          totalCount: countNodes(tree)
         });
       } catch (err) {
         sendResponse({ success: false, error: err.message });
