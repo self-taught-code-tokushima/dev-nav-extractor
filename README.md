@@ -14,7 +14,7 @@
 
 ## 🚀 使い方
 1. Chrome の拡張機能ページ (`chrome://extensions/`) で **デベロッパーモード** を有効化
-2. **パッケージ化されていない拡張機能を読み込む** をクリックし、`dev-nav-extractor` ディレクトリを選択
+2. **パッケージ化されていない拡張機能を読み込む** をクリックし、`doc-nav-extractor` ディレクトリを選択
 3. 対応ドキュメントページを開く
 4. 拡張機能のポップアップで **「全階層を展開してリンクを取得」** ボタンを押す
 5. 取得完了後に表示されるボタンで出力形式を切り替え、テキストエリアに結果が表示されます
@@ -23,8 +23,8 @@
 ## 🛠️ 開発・ローカルビルド
 ```bash
 # リポジトリをクローン
-git clone https://github.com/self-taught-code-tokushima/dev-nav-extractor.git
-cd dev-nav-extractor
+git clone https://github.com/self-taught-code-tokushima/doc-nav-extractor.git
+cd doc-nav-extractor
 
 # 依存は基本的に Chrome が提供する API のみで npm パッケージは不要です
 # 拡張機能をロードする際は、上記の手順で「パッケージ化されていない拡張機能」を読み込んでください
@@ -32,7 +32,7 @@ cd dev-nav-extractor
 
 ## 📂 ディレクトリ構成
 ```
-dev-nav-extractor/
+doc-nav-extractor/
 ├─ manifest.json            # Chrome Extension の設定
 ├─ popup.html / popup.js    # ポップアップ UI とロジック
 ├─ content-meta.js          # Meta Horizon 用コンテントスクリプト
